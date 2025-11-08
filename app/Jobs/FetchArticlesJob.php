@@ -42,7 +42,7 @@ class FetchArticlesJob implements ShouldQueue
         }
 
 
-        $provider = app($providerClass, ['config' => $config]);
+        $provider = new $providerClass($config);
 
         try {
             // Fetch latest articles
