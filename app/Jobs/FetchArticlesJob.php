@@ -15,8 +15,6 @@ class FetchArticlesJob implements ShouldQueue
     use Queueable;
 
     public int $sourceId;
-    public int $tries = 3;
-    public int $backoff = 60; // seconds
 
     /**
      * Create a new job instance for fetching articles.
