@@ -29,12 +29,19 @@ class FetchArticlesJob implements ShouldQueue
      */
     public function handle(ArticleRepository $repo): void
     {
+        info("Inside FetchArticlesJob handle method");
         $source = Source::find($this->sourceId);
+
+        info("After finding source");
 
         if (!$source || !$source->enabled) return;
 
+        info("Source is enabled");
+
         $config = $source->config ?? [];
         $providerClass = $config['provider_class'] ?? null;
+
+        info("Provider class resolved: {$providerClass}");
 
         if (!$providerClass || !class_exists($providerClass)) {
             Log::error("Provider class not found for source {$source->id}");
@@ -43,6 +50,8 @@ class FetchArticlesJob implements ShouldQueue
 
 
         $provider = new $providerClass($config);
+
+        info("Provider instance created for source {$source->id}");
 
         try {
             // Fetch latest articles

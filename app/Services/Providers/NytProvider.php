@@ -32,6 +32,9 @@ class NytProvider implements NewsProviderInterface
 
         $articles = [];
         foreach (Arr::get($data, 'results', []) as $item) {
+            $firstMedia = Arr::first($item['multimedia'] ?? []);
+            $imageUrl = $firstMedia['url'] ?? null;
+
             $articles[] = [
                 'external_id' => $item['url'] ?? null,
                 'title'       => $item['title'] ?? '',
@@ -39,7 +42,8 @@ class NytProvider implements NewsProviderInterface
                 'content'     => null,
                 'author'      => $item['byline'] ?? null,
                 'url'         => $item['url'] ?? '',
-                'image_url'   => Arr::first($item['multimedia'] ?? [], ['url' => null])['url'] ?? null,
+                // 'image_url'   => Arr::first($item['multimedia'] ?? [], ['url' => null])['url'] ?? null,
+                'image_url'   => $imageUrl,
                 'category'    => $item['section'] ?? null,
                 'language'    => 'en',
                 'published_at' => $item['published_date'] ?? null,
