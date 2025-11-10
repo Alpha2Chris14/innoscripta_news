@@ -2,52 +2,46 @@
 
 namespace App\Services\Providers;
 
-use App\Contracts\NewsProviderInterface;
-use GuzzleHttp\Client;
 use Illuminate\Support\Arr;
+use Psr\Http\Message\ResponseInterface;
 
-class NytProvider implements NewsProviderInterface
+class NytProvider extends BaseNewsProvider
 {
-    protected Client $http;
-    protected array $config;
-
-    public function __construct(array $config)
+    protected function defaultBaseUrl(): string
     {
-        $this->config = $config;
-        $this->http = new Client([
-            'base_uri' => $config['base_url'] ?? 'https://api.nytimes.com/svc/topstories/v2/',
-            'timeout'  => $config['timeout'] ?? 10,
-        ]);
+        return 'https://api.nytimes.com/svc/topstories/v2/';
     }
 
-    public function fetchLatest(array $options = []): array
+    protected function makeRequest(array $options = []): ResponseInterface
     {
         $section = $options['section'] ?? 'home';
+
         $params = [
             'api-key' => $this->config['api_key'] ?? env('NYT_KEY'),
         ];
 
-        $response = $this->http->get("{$section}.json", ['query' => $params]);
-        $data = json_decode((string)$response->getBody(), true);
+        return $this->http->get("{$section}.json", ['query' => $params]);
+    }
 
+    protected function transformResponse(array $data, array $options = []): array
+    {
         $articles = [];
+
         foreach (Arr::get($data, 'results', []) as $item) {
-            $firstMedia = Arr::first($item['multimedia'] ?? []);
-            $imageUrl = $firstMedia['url'] ?? null;
+            $image = Arr::first($item['multimedia'] ?? [])['url'] ?? null;
 
             $articles[] = [
-                'external_id' => $item['url'] ?? null,
-                'title'       => $item['title'] ?? '',
-                'description' => $item['abstract'] ?? null,
-                'content'     => null,
-                'author'      => $item['byline'] ?? null,
-                'url'         => $item['url'] ?? '',
-                // 'image_url'   => Arr::first($item['multimedia'] ?? [], ['url' => null])['url'] ?? null,
-                'image_url'   => $imageUrl,
-                'category'    => $item['section'] ?? null,
-                'language'    => 'en',
+                'external_id'  => $item['url'] ?? null,
+                'title'        => $item['title'] ?? '',
+                'description'  => $item['abstract'] ?? null,
+                'content'      => null,
+                'author'       => $item['byline'] ?? null,
+                'url'          => $item['url'] ?? '',
+                'image_url'    => $image,
+                'category'     => $item['section'] ?? null,
+                'language'     => 'en',
                 'published_at' => $item['published_date'] ?? null,
-                'meta'        => $item,
+                'meta'         => $item,
             ];
         }
 

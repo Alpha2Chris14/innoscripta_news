@@ -14,21 +14,33 @@ class ArticleController extends Controller
 
     public function index(Request $request)
     {
-        $q = $request->query('q');
-        $source = $request->query('source');
-        $category = $request->query('category');
-        $author = $request->query('author');
-        $dateFrom = $request->query('date_from');
-        $dateTo = $request->query('date_to');
-        $perPage = (int)$request->query('per_page', 15);
-        $page = (int)$request->query('page', 1);
+        $allowed = ['q', 'source', 'category', 'author', 'date_from', 'date_to', 'per_page', 'page'];
+        $params = array_filter($request->only($allowed), fn($v) => $v !== null && $v !== '');
 
-        $cacheKey = 'articles:' . md5(serialize($request->query->all()));
+        $perPage = (int)($params['per_page'] ?? 15);
+        $page = (int)($params['page'] ?? 1);
 
-        $query = Article::with('source')->orderBy('published_at', 'desc');
+        // stable cache key based on only relevant query params
+        $cacheKey = 'articles:' . md5(http_build_query($params));
 
-        if ($q) {
-            // simple title/description search; for production add full-text index
+        $query = $this->buildArticlesQuery($params)->orderBy('published_at', 'desc');
+
+        $results = Cache::remember($cacheKey, 60, function () use ($query, $perPage, $page) {
+            return $query->paginate($perPage, ['*'], 'page', $page);
+        });
+
+        return ArticleResource::collection($results);
+    }
+
+    /**
+     * Build the base query for listing articles from filter params.
+     */
+    private function buildArticlesQuery(array $params)
+    {
+        $query = Article::with('source');
+
+        if (!empty($params['q'])) {
+            $q = $params['q'];
             $query->where(function ($sub) use ($q) {
                 $sub->where('title', 'like', "%{$q}%")
                     ->orWhere('description', 'like', "%{$q}%")
@@ -36,17 +48,30 @@ class ArticleController extends Controller
             });
         }
 
-        if ($source) $query->whereHas('source', fn($s) => $s->where('slug', $source));
-        if ($category) $query->where('category', $category);
-        if ($author) $query->where('author', 'like', "%{$author}%");
-        if ($dateFrom) $query->where('published_at', '>=', $dateFrom);
-        if ($dateTo) $query->where('published_at', '<=', $dateTo);
+        if (!empty($params['source'])) {
+            $source = $params['source'];
+            $query->whereHas('source', function ($s) use ($source) {
+                $s->where('slug', $source);
+            });
+        }
 
-        $results = Cache::remember($cacheKey, 60, function () use ($query, $perPage) {
-            return $query->paginate($perPage);
-        });
+        if (!empty($params['category'])) {
+            $query->where('category', $params['category']);
+        }
 
-        return ArticleResource::collection($results);
+        if (!empty($params['author'])) {
+            $query->where('author', 'like', "%{$params['author']}%");
+        }
+
+        if (!empty($params['date_from'])) {
+            $query->where('published_at', '>=', $params['date_from']);
+        }
+
+        if (!empty($params['date_to'])) {
+            $query->where('published_at', '<=', $params['date_to']);
+        }
+
+        return $query;
     }
 
     /**

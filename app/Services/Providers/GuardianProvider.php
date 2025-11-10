@@ -2,49 +2,45 @@
 
 namespace App\Services\Providers;
 
-use App\Contracts\NewsProviderInterface;
-use GuzzleHttp\Client;
 use Illuminate\Support\Arr;
+use Psr\Http\Message\ResponseInterface;
 
-class GuardianProvider implements NewsProviderInterface
+
+class GuardianProvider extends BaseNewsProvider
 {
-    protected Client $http;
-    protected array $config;
-
-    public function __construct(array $config)
+    protected function defaultBaseUrl(): string
     {
-        $this->config = $config;
-        $this->http = new Client([
-            'base_uri' => $config['base_url'] ?? 'https://content.guardianapis.com/',
-            'timeout'  => $config['timeout'] ?? 10,
-        ]);
+        return 'https://content.guardianapis.com/';
     }
 
-    public function fetchLatest(array $options = []): array
+    protected function makeRequest(array $options = []): ResponseInterface
     {
         $params = array_merge([
-            'api-key' => $this->config['api_key'] ?? env('GUARDIAN_KEY'),
+            'api-key'   => $this->config['api_key'] ?? env('GUARDIAN_KEY'),
             'page-size' => $options['pageSize'] ?? 50,
-            'order-by' => $options['order_by'] ?? 'newest',
+            'order-by'  => $options['order_by'] ?? 'newest',
         ], $options['query'] ?? []);
 
-        $response = $this->http->get('search', ['query' => $params]);
-        $data = json_decode((string)$response->getBody(), true);
+        return $this->http->get('search', ['query' => $params]);
+    }
 
+    protected function transformResponse(array $data, array $options = []): array
+    {
         $articles = [];
+
         foreach (Arr::get($data, 'response.results', []) as $item) {
             $articles[] = [
-                'external_id' => $item['id'] ?? null,
-                'title'       => $item['webTitle'] ?? '',
-                'description' => null,
-                'content'     => null,
-                'author'      => $item['fields']['byline'] ?? null,
-                'url'         => $item['webUrl'] ?? '',
-                'image_url'   => $item['fields']['thumbnail'] ?? null,
-                'category'    => $item['sectionName'] ?? null,
-                'language'    => $item['fields']['language'] ?? null,
+                'external_id'  => $item['id'] ?? null,
+                'title'        => $item['webTitle'] ?? '',
+                'description'  => null,
+                'content'      => null,
+                'author'       => $item['fields']['byline'] ?? null,
+                'url'          => $item['webUrl'] ?? '',
+                'image_url'    => $item['fields']['thumbnail'] ?? null,
+                'category'     => $item['sectionName'] ?? null,
+                'language'     => $item['fields']['language'] ?? 'en',
                 'published_at' => $item['webPublicationDate'] ?? null,
-                'meta'        => $item,
+                'meta'         => $item,
             ];
         }
 
