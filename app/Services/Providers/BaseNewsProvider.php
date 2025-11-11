@@ -36,6 +36,12 @@ abstract class BaseNewsProvider implements NewsProviderInterface
      */
     abstract protected function transformResponse(array $data, array $options = []): array;
 
+    public function setHttpClient(Client $client): void
+    {
+        $this->http = $client;
+    }
+
+
     /**
      * Generic method used by all providers to fetch latest news.
      */

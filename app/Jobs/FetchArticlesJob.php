@@ -6,9 +6,9 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
 use Exception;
-use App\Contracts\NewsProviderInterface;
 use App\Models\Source;
 use App\Repositories\ArticleRepository;
+use App\Services\Providers\BaseNewsProvider;
 
 class FetchArticlesJob implements ShouldQueue
 {
@@ -61,6 +61,22 @@ class FetchArticlesJob implements ShouldQueue
             // Log the error and rethrow to trigger job retry
             Log::error("FetchArticlesJob failed for source {$source->id}: {$e->getMessage()}");
             throw $e;
+        }
+    }
+
+
+    // This is just for testing purposes to inject a mock provider
+
+    public function handleWithProvider(BaseNewsProvider $provider): void
+    {
+        $sourceId = $this->sourceId;
+        $articles = $provider->fetchLatest();
+
+        foreach ($articles as $articleData) {
+            \App\Models\Article::updateOrCreate(
+                ['source_id' => $sourceId, 'title' => $articleData['title']],
+                $articleData
+            );
         }
     }
 }

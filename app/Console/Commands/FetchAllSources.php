@@ -29,7 +29,7 @@ class FetchAllSources extends Command
      */
     public function handle()
     {
-        Log::info('Fetching articles started...');
+        $this->info('Fetching articles started...');
         $sourceId = $this->option('source_id');
         $sources = $sourceId ? Source::where('id', $sourceId)->get() : Source::where('enabled', true)->get();
 
@@ -42,6 +42,6 @@ class FetchAllSources extends Command
             FetchArticlesJob::dispatch($source->id)->onQueue('news-fetch');
             $this->info("Dispatched fetch job for source {$source->name}");
         }
-        Log::info('Fetching articles completed.');
+        info('Fetching articles completed.');
     }
 }
