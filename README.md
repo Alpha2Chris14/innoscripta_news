@@ -134,10 +134,13 @@ GUARDIAN_API_KEY=your_guardian_key
 NYT_KEY=your_nyt_key
 ```
 
-### 4️⃣ Run Migrations
+### 4️⃣ Run Migrations and seeders
 
 ```bash
 php artisan migrate
+```
+```bash
+php artisan db:seed
 ```
 
 ---
